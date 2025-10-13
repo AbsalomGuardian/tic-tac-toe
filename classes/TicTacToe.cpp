@@ -1,4 +1,5 @@
 #include "TicTacToe.h"
+#include "../Application.h" 
 
 // -----------------------------------------------------------------------------
 // TicTacToe.cpp
@@ -58,6 +59,22 @@ void TicTacToe::setUpBoard()
     // then we need to setup our 3x3 array in _grid with the correct position of the square, and load the "square.png" sprite for each square
     // we will use the initHolder function on each square to do this
     // finally we should call startGame to get everything going
+    setNumberOfPlayers(2);
+    //underscore repersents that this is a class variable
+    _gameOptions.rowX = 3;
+    _gameOptions.rowY = 3;
+    //TODO: load square.png 
+    for(int i = 0; i < _gameOptions.rowX ; i++) {
+        for(int j = 0; j < _gameOptions.rowY; j++) {
+            int x = i * 80;
+            int y = (j * 80 ) + 30;
+            _grid[i][j].initHolder(ImVec2((float)x, (float)y), "square.png", x * 100, y * 100); //change this to be entire grid
+
+        }
+    }
+    
+    startGame();
+    
 }
 
 //
@@ -68,10 +85,16 @@ bool TicTacToe::actionForEmptyHolder(BitHolder *holder)
     // 1) Guard clause: if holder is nullptr, fail fast.
     //    (Beginner hint: always check pointers before using them.)
     //    if (!holder) return false;
+    if(holder == nullptr) {
+        return false;
+    }
 
     // 2) Is it actually empty?
     //    Ask the holder for its current Bit using the bit() function.
     //    If there is already a Bit in this holder, return false.
+    if(holder->bit() != nullptr) {
+        return false;
+    }
 
     // 3) Place the current player's piece on this holder:
     //    - Figure out whose turn it is (getCurrentPlayer()->playerNumber()).
@@ -79,8 +102,11 @@ bool TicTacToe::actionForEmptyHolder(BitHolder *holder)
     //    - Position it at the holder's position (holder->getPosition()).
     //    - Assign it to the holder: holder->setBit(newBit);
 
+    int playerNum = getCurrentPlayer()->playerNumber();
+    Bit *newPiece = PieceForPlayer(playerNum);
+    holder->setBit(newPiece);
     // 4) Return whether we actually placed a piece. true = acted, false = ignored.
-    return false; // replace with true if you complete a successful placement    
+    return true; // replace with true if you complete a successful placement    
 }
 
 bool TicTacToe::canBitMoveFrom(Bit *bit, BitHolder *src)
@@ -102,16 +128,28 @@ void TicTacToe::stopGame()
 {
     // clear out the board
     // loop through the 3x3 array and call destroyBit on each square
+    for(int i = 0; i < _gameOptions.rowX; i++) {
+        for(int j = 0; j < _gameOptions.rowY; j++) {
+            _grid[i][j].destroyBit();
+        }
+    }
 }
 
 //
 // helper function for the winner check
 //
-Player* TicTacToe::ownerAt(int index ) const
+Player* TicTacToe::ownerAt(int index) const
 {
     // index is 0..8, convert to x,y using:
     // y = index / 3
     // x = index % 3 
+    int y = index / 3;
+    int x = index % 3;
+    if(_grid[x][y].bit() == nullptr) {
+        return nullptr;
+    } else {
+        _grid[x][y].bit()->getOwner()->playerNumber();
+    }
     // if there is no bit at that location (in _grid) return nullptr
     // otherwise return the owner of the bit at that location using getOwner()
     return nullptr;
@@ -138,6 +176,35 @@ Player* TicTacToe::checkForWinner()
 
     // Hint: Consider using an array to store the winning combinations
     // to avoid repetitive code
+    int const winning_triples[8][3] = { //reference const array of all the winning triples
+        {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, {0, 4, 8}, {2, 4, 6}
+    };
+
+    //go through every triple
+    for(int outer = 0; outer < 8; outer++) {
+        //check first 
+        Player *ownerChecking = ownerAt(winning_triples[outer][0]); //who holds the first position in the triple
+        int inARow = 1;
+        if(ownerChecking == nullptr) { //if no one does go onto the next triple
+            continue;;
+        }
+
+        //inner loop only used to check that everything matches the first
+        for(int inner = 1; inner < 3; inner++) {
+            Player *spaceOwner = ownerAt(winning_triples[outer][inner]);
+            if(spaceOwner != ownerChecking) {
+                break; //no need to check the rest of this tuple
+            }
+            else {
+                inARow++;
+            }
+        }
+
+        if(inARow == 3) {
+            return ownerChecking;
+        }
+
+    }
     return nullptr;
 }
 
@@ -146,7 +213,14 @@ bool TicTacToe::checkForDraw()
     // is the board full with no winner?
     // if any square is empty, return false
     // otherwise return true
-    return false;
+       for(int i = 0; i < _gameOptions.rowX; i++) {
+        for(int j = 0; j < _gameOptions.rowY; j++) {
+           if (_grid[i][j].empty() == true) {
+                return false;
+           }
+        }
+    }
+    return true;
 }
 
 //
@@ -176,7 +250,21 @@ std::string TicTacToe::stateString() const
     // remember that player numbers are zero-based, so add 1 to get '1' or '2'
     // if the bit is null, add '0' to the string
     // finally, return the constructed string
-    return "000000000";
+    string stateString = "";
+    for(int y = 0; _gameOptions.rowY; y++) {
+        for(int x = 0; _gameOptions.rowX; x++) {
+            if(_grid[y][x].bit() != nullptr) {
+                int num = _grid[y][x].bit()->getOwner()->playerNumber();
+                num = num + 1;
+                string s = to_string(num);
+                stateString = stateString + s;
+            } else {
+                stateString = stateString + "0";
+            }
+        }
+    }
+    //create the string by getting it from the grid
+    return stateString;
 }
 
 //
@@ -205,6 +293,12 @@ void TicTacToe::setStateString(const std::string &s)
     // loop through the 3x3 array and set each square accordingly
     // the string should always be valid, so you don't need to check its length or contents
     // but you can assume it will always be 9 characters long and only contain '0', '1', or '2'
+
+
+    //ask in class about getting stateString saved to a file
+
+
+    
 }
 
 
