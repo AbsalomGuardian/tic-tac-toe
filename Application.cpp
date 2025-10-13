@@ -27,7 +27,7 @@ Logger* Logger::instance = nullptr;
 Logger* Logger::getInstance(){
     if (instance == nullptr)
             instance = new Logger();
-        return instance;
+    return instance;
 }
 
 
@@ -189,12 +189,12 @@ namespace ClassGame {
                 if (!game->getCurrentPlayer()) return;
                 
                 ImGui::Begin("Settings");
-                ImGui::Text("Current Player Number: %d", game->getCurrentPlayer()->playerNumber());
+                ImGui::Text("Current Player Number: %d", (game->getCurrentPlayer()->playerNumber()) + 1);
                 ImGui::Text("Current Board State: %s", game->stateString().c_str());
 
                 if (gameOver) {
                     ImGui::Text("Game Over!");
-                    ImGui::Text("Winner: %d", gameWinner);
+                    ImGui::Text("Winner: %d", gameWinner + 1);
                     if (ImGui::Button("Reset Game")) {
                         game->stopGame();
                         game->setUpBoard();
