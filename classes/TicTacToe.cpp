@@ -26,7 +26,7 @@
 // -----------------------------------------------------------------------------
 
 const int AI_PLAYER   = 1;      // index of the AI player (O)
-const int HUMAN_PLAYER= 0;      // index of the human player (X)
+const int HUMAN_PLAYER= -1;      // index of the human player (X)
 
 TicTacToe::TicTacToe()
 {
@@ -73,6 +73,10 @@ void TicTacToe::setUpBoard()
             //now i'm not even sure if it makes the bounding box bigger
 
         }
+    }
+
+    if(gameHasAI()) {
+        setAIPlayer(AI_PLAYER);
     }
     
     startGame();
@@ -348,6 +352,96 @@ void TicTacToe::setStateString(const std::string &s)
 //
 void TicTacToe::updateAI() 
 {
-    // we will implement the AI in the next assignment!
+    int bestMove = -1000;
+    int bestSquare = -1;
+    Logger *L = Logger::getInstance();
+    string state = stateString(); //all operations will now be done on the index numbers
+    for(int i =0; i < 9; i++) { //go through every space on the board
+        
+        if(state[i] == '0') {
+            L->LogGameEvent("Testing space " + to_string(i));
+            state[i] = '2';
+            int result = -negamax(state, 0, HUMAN_PLAYER);
+            if(result > bestMove) {
+                bestMove = result;
+                bestSquare = i;
+            }
+            state[i] = '0';
+
+        }
+    }
+    if(bestSquare != -1) {
+        int x = bestSquare % 3;
+        int y = bestSquare / 3;
+        BitHolder *holder = &_grid[y][x];
+        actionForEmptyHolder(holder);
+        endTurn();
+    }
+
+}
+
+bool aiBoardFull(const string& state) {
+    return state.find('0') == string::npos;
+}
+
+//aiwinner is just check for winner based on state strings
+//get playerat by looking at state string
+//dont care who won, just that there is a winner. bad for player above in recursion
+int aiWinner(string state) {
+    int const winning_triples[8][3] = { //reference const array of all the winning triples
+        {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, {0, 4, 8}, {2, 4, 6}
+    };
+    for(int outer = 0; outer < 8; outer++) {
+        //check first 
+        int index = winning_triples[outer][0];
+        char ownerChecking = state[index];
+        int inARow = 1;
+        if(ownerChecking == '0') { //if no one does go onto the next triple
+            continue;
+        }
+        //inner loop only used to check that everything matches the first
+        for(int inner = 1; inner < 3; inner++) {
+            int index = winning_triples[outer][inner];
+            char spaceOwner = state[index];
+            if(spaceOwner != ownerChecking) {
+                break; //no need to check the rest of this tuple
+            }
+            else {
+                inARow++;
+            }
+        }
+
+        if(inARow == 3 && aiBoardFull(state) == false) {
+            return 10; //doesn't matter who won
+        }
+
+    }
+    return 0;
+}
+
+int TicTacToe::negamax(string state, int depth, int player) {
+    int bestVal = -1000;
+    int boardwinner = aiWinner(state);
+    if(boardwinner) {
+        return -boardwinner;
+    }
+
+    bool boardFull = aiBoardFull(state);
+    if (boardFull) {
+        return 0;
+    }
+
+
+    for(int i = 0; i<9; i++) {
+        if (state[i] == '0') {
+            state[i] = player == HUMAN_PLAYER ? '1' : '2';
+            int result = -negamax(state, depth + 1, -player);
+            if (result > bestVal) {
+                bestVal = result;
+            }
+            state[i] = '0';
+        }
+    }
+    return bestVal;
 }
 
